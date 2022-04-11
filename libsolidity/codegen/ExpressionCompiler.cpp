@@ -1601,9 +1601,14 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 	{
 		if (functionType->hasDeclaration())
 		{
-			m_context << functionType->externalIdentifier();
-			/// need to store it as bytes4
-			utils().leftShiftNumberOnStack(224);
+			if (functionType->kind() == FunctionType::Kind::Event)
+				m_context << u256(h256::Arith(util::keccak256(functionType->externalSignature())));
+			else
+			{
+				m_context << functionType->externalIdentifier();
+				/// need to store it as bytes4
+				utils().leftShiftNumberOnStack(224);
+			}
 			return false;
 		}
 		else if (auto const* expr = dynamic_cast<MemberAccess const*>(&_memberAccess.expression()))
@@ -1777,8 +1782,8 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 			if (functionType.kind() == FunctionType::Kind::External)
 				CompilerUtils(m_context).popStackSlots(functionType.sizeOnStack() - 2);
 			m_context << Instruction::SWAP1 << Instruction::POP;
-			/// need to store it as bytes4
-			utils().leftShiftNumberOnStack(224);
+			if (!(functionType.kind() == FunctionType::Kind::Event))
+				utils().leftShiftNumberOnStack(224);
 		}
 		else if (member == "address")
 		{
